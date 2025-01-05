@@ -1,0 +1,5 @@
+.env
+data
+memory_index
+metadata_descriptions.json
+node_modules

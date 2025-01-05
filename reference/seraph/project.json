@@ -1,0 +1,43 @@
+{
+  "name": "server/seraph",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/server/seraph/src",
+  "projectType": "library",
+  "tags": ["release"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/server/seraph",
+        "main": "packages/server/seraph/src/index.ts",
+        "tsConfig": "packages/server/seraph/tsconfig.lib.json",
+        "assets": ["packages/server/seraph/*.md"]
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"]
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "jestConfig": "packages/server/seraph/jest.config.ts"
+      }
+    },
+    "cli": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/server/seraph",
+        "commands": [
+          {
+            "command": "tsx ./src/lib/cli.ts",
+            "forwardAllArgs": true
+          }
+        ],
+        "parallel": false
+      }
+    }
+  }
+}
