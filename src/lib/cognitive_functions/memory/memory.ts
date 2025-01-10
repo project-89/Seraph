@@ -1,8 +1,8 @@
 // memory.ts
 import path from "path";
-import { BaseCognitiveFunction } from "../../base_cognitive_function";
-import { SeraphCore } from "../../seraphCore";
-import { MemoryStore, MemoryType } from "./memory_store";
+import { BaseCognitiveFunction } from '../../base_cognitive_function';
+import { SeraphCore } from '../../seraphCore';
+import { MemoryStore, MemoryType } from './memory_store';
 
 const MEMORY_INDEX_PATH = path.join(
   process.cwd(),
@@ -56,17 +56,19 @@ const functionDefinition = {
 class MemoryStorage extends BaseCognitiveFunction {
   private store: MemoryStore | null = null;
   private seraph: SeraphCore;
+  private memoryPath: string;
 
-  constructor(seraph: SeraphCore) {
+  constructor(seraph: SeraphCore, memoryPath: string) {
     super(functionDefinition);
     this.seraph = seraph;
+    this.memoryPath = memoryPath;
   }
 
   private async getStore() {
     if (!this.store) {
       this.store = await MemoryStore.getInstance(
         this.seraph.options.openAIApiKey,
-        MEMORY_INDEX_PATH
+        this.memoryPath
       );
     }
     return this.store;
@@ -121,8 +123,9 @@ class MemoryStorage extends BaseCognitiveFunction {
 class MemoryRetrieval extends BaseCognitiveFunction {
   private store: MemoryStore | null = null;
   private seraph: SeraphCore;
+  private memoryPath: string;
 
-  constructor(seraph: SeraphCore) {
+  constructor(seraph: SeraphCore, memoryPath: string) {
     super({
       name: "memoryRetrieval",
       description: "Retrieves information from memory using semantic search.",
@@ -159,13 +162,14 @@ class MemoryRetrieval extends BaseCognitiveFunction {
       ],
     });
     this.seraph = seraph;
+    this.memoryPath = memoryPath;
   }
 
   private async getStore() {
     if (!this.store) {
       this.store = await MemoryStore.getInstance(
         this.seraph.options.openAIApiKey,
-        MEMORY_INDEX_PATH
+        this.memoryPath
       );
     }
     return this.store;

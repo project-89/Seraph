@@ -1,6 +1,6 @@
 // response_parser.ts
 import { parseStringPromise } from "xml2js";
-import { CognitiveFunctionSchema } from "./zod_schemas";
+import { CognitiveFunctionSchema } from './zod_schemas';
 
 class ResponseParser {
   private cognitiveFunctions: Record<string, CognitiveFunctionSchema>;

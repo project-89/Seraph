@@ -25,93 +25,69 @@ class SeraphIterator implements AsyncIterator<string> {
       return { done: true, value: undefined };
     }
 
-    const messages = this.seraph.conversationManager.getMessages(
-      this.conversationId
-    );
+    let hasMoreFunctions = true;
+    while (hasMoreFunctions) {
+      const messages = this.seraph.conversationManager.getMessages(
+        this.conversationId
+      );
 
-    let insideMessage = false;
-    let currentMessage = "";
+      const stream = this.llmManager.streamResponse(
+        this.systemPrompt,
+        messages,
+        4000
+      );
 
-    const stream = this.llmManager.streamResponse(
-      this.systemPrompt,
-      messages,
-      4000
-    );
-
-    // Handle streaming messages
-    stream.on("text", (token) => {
-      if (insideMessage) {
-        if (token === "</message>") {
-          insideMessage = false;
-          this.seraph.emit("token", "<END>");
-          // Only emit complete, valid messages
-          const trimmedMessage = currentMessage.trim();
-          if (trimmedMessage) {
-            this.seraph.emit("message", trimmedMessage);
-          }
-          currentMessage = "";
-        } else {
-          currentMessage += token;
-          this.seraph.emit("token", token);
-        }
-      } else {
-        if (token === "<message>") {
-          insideMessage = true;
-          this.seraph.emit("token", "<START>");
+      let response = "";
+      for await (const chunk of stream) {
+        if (chunk.type === "content_block_delta") {
+          const text = chunk.delta.text;
+          this.seraph.emit("token", text);
+          response += text;
         }
       }
-    });
 
-    const finalMessage = await stream.finalMessage();
-    const llmResponse = finalMessage?.content[0]?.text || "";
+      // Update conversation context with the response
+      this.seraph.conversationManager.updateContext(
+        this.conversationId,
+        response,
+        "assistant"
+      );
 
-    // Handle function calls
-    const { functionName, functionArgs } =
-      await this.seraph.responseParser.parseFunctionUsage(llmResponse);
-    if (functionName && functionArgs) {
-      await this.handleFunctionCall(functionName, functionArgs);
-    }
-
-    // Update conversation context with the complete response
-    this.seraph.conversationManager.updateContext(
-      this.conversationId,
-      llmResponse,
-      "assistant"
-    );
-
-    // Extract final message if not already handled in streaming
-    const message = await this.seraph.responseParser.extractMessage(
-      llmResponse
-    );
-    this.done = true;
-
-    return {
-      done: false,
-      value: message || "",
-    };
-  }
-
-  public [Symbol.asyncIterator](): AsyncIterator<string> {
-    return this;
-  }
-
-  private async processResponse(response: string): Promise<void> {
-    try {
-      // Extract message first
+      // Extract and emit message
       const message = await this.seraph.responseParser.extractMessage(response);
       if (message) {
         this.seraph.emit("message", message);
       }
 
-      // Then handle function calls
+      // Check for function calls
       const { functionName, functionArgs } =
         await this.seraph.responseParser.parseFunctionUsage(response);
+
       if (functionName && functionArgs) {
+        this.seraph.emit("info", "Raw function call:", {
+          name: functionName,
+          args: functionArgs,
+        });
+
+        // Execute the function
         await this.handleFunctionCall(functionName, functionArgs);
+
+        // Continue the loop to get another response
+        hasMoreFunctions = true;
+      } else {
+        hasMoreFunctions = false;
       }
-    } catch (error) {
-      console.error("Error processing response:", error);
     }
+
+    this.done = true;
+    return {
+      done: true,
+      value: undefined,
+    };
+  }
+
+  public [Symbol.asyncIterator](): AsyncIterator<string> {
+    return this;
   }
 
   private async handleFunctionCall(
@@ -125,7 +101,6 @@ class SeraphIterator implements AsyncIterator<string> {
           functionArgs
         );
 
-      // Process function output and update response
       if (functionOutput) {
         const updatedResponse = this.seraph.processFunctionOutput(
           functionOutput,

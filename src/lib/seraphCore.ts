@@ -1,15 +1,15 @@
 // seraph.ts
-import { convertToXML } from "./zod_schemas";
+import { convertToXML } from './zod_schemas';
 import TypedEmitter from "typed-emitter";
-import { ConversationManager } from "./conversation_manager";
-import { CognitiveFunctionExecutor } from "./cognitive_function_executor";
-import { ResponseParser } from "./response_parser";
-import { FeedbackProcessor } from "./feedback_processor";
-import { SeraphIterator } from "./seraph_iterator";
-import { BaseCognitiveFunction } from "./base_cognitive_function";
-import { IMiddleware, MiddlewareManager } from "./middlewareManager";
+import { ConversationManager } from './conversation_manager';
+import { CognitiveFunctionExecutor } from './cognitive_function_executor';
+import { ResponseParser } from './response_parser';
+import { FeedbackProcessor } from './feedback_processor';
+import { SeraphIterator } from './seraph_iterator';
+import { BaseCognitiveFunction } from './base_cognitive_function';
+import { IMiddleware, MiddlewareManager } from './middlewareManager';
 import { EventEmitter } from "events";
-import { SeraphFunction, SeraphRequest } from "./types";
+import { SeraphFunction, SeraphRequest } from './types';
 
 type SeraphEvents = {
   request: (request: SeraphRequest) => void;
@@ -27,6 +27,9 @@ export type SeraphOptions = {
   prompt: string;
   openAIApiKey: string;
   anthropicApiKey: string;
+  conversationsPath: string;
+  memoryPath: string;
+  configPath: string;
 };
 /**
  * The Seraph class represents the main entry point for the AI system.
@@ -46,7 +49,9 @@ class SeraphCore extends (EventEmitter as new () => TypedEmitter<SeraphEvents>) 
   constructor(options: SeraphOptions) {
     super();
     this.options = options;
-    this.conversationManager = new ConversationManager();
+    this.conversationManager = new ConversationManager(
+      options.conversationsPath
+    );
     this.cognitiveFunctionExecutor = new CognitiveFunctionExecutor(this);
     this.responseParser = new ResponseParser(this.cognitiveFunctions);
     this.feedbackProcessor = new FeedbackProcessor();

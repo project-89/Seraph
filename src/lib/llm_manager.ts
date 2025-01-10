@@ -1,17 +1,19 @@
-import Anthropic from '@anthropic-ai/sdk'
-import { Message } from './conversation_manager'
-import { MessageStream } from '@anthropic-ai/sdk/lib/MessageStream'
+import Anthropic from "@anthropic-ai/sdk";
+import { Message } from "./conversation_manager";
+import { MessageStream } from "@anthropic-ai/sdk/lib/MessageStream";
 
-// const MODEL = 'claude-3-opus-20240229'
-// const MODEL = 'claude-3-sonnet-20240229'
-const MODEL = 'claude-3-5-sonnet-20240620'
-// const MODEL = 'claude-3-haiku-20240307'
+const MODEL = "claude-3-5-sonnet-20241022";
+
+type AnthropicMessage = {
+  role: "assistant" | "user";
+  content: string;
+};
 
 class LLMManager {
-  private anthropic: Anthropic
+  private anthropic: Anthropic;
 
   constructor(apiKey: string) {
-    this.anthropic = new Anthropic({ apiKey, maxRetries: 5 })
+    this.anthropic = new Anthropic({ apiKey, maxRetries: 5 });
   }
 
   streamResponse(
@@ -19,15 +21,19 @@ class LLMManager {
     messages: Message[],
     maxTokens: number
   ): MessageStream {
+    const formattedMessages: AnthropicMessage[] = messages.map((msg) => ({
+      role: msg.role === "assistant" ? "assistant" : "user",
+      content: msg.content,
+    }));
+
     const stream = this.anthropic.messages.stream({
       model: MODEL,
-      stop_sequences: ['</function_calls>'],
-      system: systemPrompt,
       max_tokens: maxTokens,
-      messages,
-    })
+      system: systemPrompt,
+      messages: formattedMessages,
+    });
 
-    return stream
+    return stream;
   }
 
   async generateResponse(
@@ -35,18 +41,20 @@ class LLMManager {
     messages: Message[],
     maxTokens: number
   ): Promise<string> {
+    const formattedMessages: AnthropicMessage[] = messages.map((msg) => ({
+      role: msg.role === "assistant" ? "assistant" : "user",
+      content: msg.content,
+    }));
+
     const msg = await this.anthropic.messages.create({
       model: MODEL,
-      // model: 'claude-3-sonnet-20240229',
-      // model: 'claude-3-haiku-20240307',
-      stop_sequences: ['</function_calls>'],
-      system: systemPrompt,
       max_tokens: maxTokens,
-      messages,
-    })
+      system: systemPrompt,
+      messages: formattedMessages,
+    });
 
-    return msg?.content[0]?.text
+    return msg?.content[0]?.text || "";
   }
 }
 
-export { LLMManager }
+export { LLMManager };

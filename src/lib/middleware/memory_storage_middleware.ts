@@ -1,12 +1,12 @@
 // memoryStorageMiddleware.ts
 import path from "path";
-import { IMiddleware } from "../middlewareManager";
-import { SeraphCore } from "../seraphCore";
+import { IMiddleware } from '../middlewareManager';
+import { SeraphCore } from '../seraphCore';
 import { z } from "zod";
 import {
   MemoryStore,
   MemoryType,
-} from "../cognitive_functions/memory/memory_store";
+} from '../cognitive_functions/memory/memory_store';
 
 const MEMORY_INDEX_PATH = path.join(
   process.cwd(),
@@ -21,16 +21,18 @@ class MemoryStorageMiddleware implements IMiddleware {
   name = "memoryStorage";
   private store: MemoryStore | null = null;
   private seraph: SeraphCore;
+  private memoryPath: string;
 
   constructor(seraph: SeraphCore) {
     this.seraph = seraph;
+    this.memoryPath = seraph.options.memoryPath;
   }
 
   private async getStore() {
     if (!this.store) {
       this.store = await MemoryStore.getInstance(
         this.seraph.options.openAIApiKey,
-        MEMORY_INDEX_PATH
+        this.memoryPath
       );
     }
     return this.store;

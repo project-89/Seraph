@@ -35,37 +35,35 @@ class SeraphCLI {
 
   constructor(seraph: SeraphCore) {
     this.seraph = seraph;
-    this.conversationId = "cli_conversation";
-
-    // Initialize conversation history
-    this.initializeConversation();
+    this.conversationId = `conversation_${Date.now()}`;
 
     this.setupEventListeners();
     this.registerCommands();
     this.setupCommanderProgram();
   }
 
-  private async initializeConversation() {
+  private async initializeConversation(loadHistory: boolean = false) {
     try {
-      // Wait for conversation manager to initialize and load conversations
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      const messages = this.seraph.conversationManager.getMessages(
-        this.conversationId
-      );
-      if (messages.length > 0) {
-        console.log(
-          formatSystemMessage("Loaded previous conversation history.")
+      if (loadHistory) {
+        const messages = this.seraph.conversationManager.getMessages(
+          this.conversationId
         );
-        // Load last few messages into context
-        const recentMessages = messages.slice(-5);
-        for (const msg of recentMessages) {
-          await this.seraph.conversationManager.updateContext(
-            this.conversationId,
-            msg.content,
-            msg.role
+        if (messages.length > 0) {
+          console.log(
+            formatSystemMessage("Loaded previous conversation history.")
           );
+          // Load last few messages into context
+          const recentMessages = messages.slice(-5);
+          for (const msg of recentMessages) {
+            await this.seraph.conversationManager.updateContext(
+              this.conversationId,
+              msg.content,
+              msg.role
+            );
+          }
         }
+      } else {
+        console.log(formatSystemMessage("Started new conversation."));
       }
     } catch (error) {
       console.error("Failed to initialize conversation:", error);
@@ -88,15 +86,20 @@ class SeraphCLI {
       console.log(
         formatSystemMessage(`Executing function: ${functionExecution.name}`)
       );
+      if (functionExecution.message) {
+        console.log(formatInfo(functionExecution.message));
+      }
     });
 
     this.seraph.on("functionResult", (functionResult: SeraphFunction) => {
-      console.log(
-        formatFunction(
-          functionResult.name || "Unknown Function",
-          functionResult.result || "No result"
-        )
-      );
+      if (functionResult.result) {
+        console.log(
+          formatFunction(
+            functionResult.name || "Unknown Function",
+            functionResult.result
+          )
+        );
+      }
     });
 
     this.seraph.on(
@@ -107,24 +110,37 @@ class SeraphCLI {
             `Executing middleware: ${middlewareExecution.name}`
           )
         );
+        if (middlewareExecution.message) {
+          console.log(formatInfo(middlewareExecution.message));
+        }
       }
     );
 
     this.seraph.on("middlewareResult", (middlewareResult: SeraphFunction) => {
-      console.log(
-        formatFunction(
-          middlewareResult.name || "Unknown Middleware",
-          middlewareResult.result || "No result"
-        )
-      );
+      if (middlewareResult.result) {
+        console.log(
+          formatFunction(
+            middlewareResult.name || "Unknown Middleware",
+            middlewareResult.result
+          )
+        );
+      }
     });
 
     this.seraph.on("message", (message: string) => {
-      console.log(formatResponse(message));
+      if (message && message.trim()) {
+        console.log(formatResponse(message));
+      }
     });
   }
 
   private registerCommands() {
+    this.registerCommand({
+      name: "!new",
+      description: "!new - Start a new conversation thread",
+      handler: this.handleNewConversation.bind(this),
+    });
+
     this.registerCommand({
       name: "!vim",
       description: "!vim - Opens text editor to input text",
@@ -338,6 +354,14 @@ class SeraphCLI {
         );
       }
     }
+  }
+
+  private async handleNewConversation() {
+    this.conversationId = `conversation_${Date.now()}`;
+    await this.initializeConversation(false);
+    console.log(
+      formatSystemMessage(`Started new conversation: ${this.conversationId}`)
+    );
   }
 }
 

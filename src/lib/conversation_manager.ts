@@ -20,8 +20,8 @@ class ConversationManager {
   private conversations: Record<string, Message[]> = {};
   private storagePath: string;
 
-  constructor() {
-    this.storagePath = path.join(process.cwd(), "data", "conversations");
+  constructor(storagePath: string) {
+    this.storagePath = storagePath;
     this.initStorage();
   }
 
